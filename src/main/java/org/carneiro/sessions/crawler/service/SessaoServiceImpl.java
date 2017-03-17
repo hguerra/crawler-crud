@@ -8,11 +8,13 @@ import org.springframework.stereotype.Service;
 @Service("sessaoService")
 public class SessaoServiceImpl implements SessaoService {
 
+	private static final int URLS_POR_THREAD = 10;
+
 	@Value("${cinemark.url}")
 	private String url;
 
 	@Value("${cinemark.size}")
-	private int size;
+	private int numeroDeUrls;
 
 	@Override
 	public Sessao get() {
@@ -20,14 +22,16 @@ public class SessaoServiceImpl implements SessaoService {
 
 		int inicio = 0;
 		int fim = 10;
-		for (int i = 0; i < (size % 10); i++) {
+
+		int numerosDeThreads = (numeroDeUrls < URLS_POR_THREAD) ? 1 : numeroDeUrls % URLS_POR_THREAD;
+		for (int i = 0; i < numerosDeThreads; i++) {
 			new Thread(new TarefaRest(this.url, sessao, inicio, fim)).start();
 
 			inicio = fim;
-			fim = (fim + 10 > size) ? size : fim + 10;
+			fim = (fim + URLS_POR_THREAD > numeroDeUrls) ? numeroDeUrls : fim + URLS_POR_THREAD;
 		}
 
-		while (sessao.getTamanho() < size) {
+		while (sessao.getTamanho() < numeroDeUrls) {
 			synchronized (sessao) {
 				try {
 					sessao.wait();
@@ -44,7 +48,7 @@ public class SessaoServiceImpl implements SessaoService {
 		this.url = url;
 	}
 
-	public int getSize() {
-		return size;
+	public void setNumeroDeUrls(int numeroDeUrls) {
+		this.numeroDeUrls = numeroDeUrls;
 	}
 }
